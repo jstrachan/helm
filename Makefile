@@ -1,6 +1,7 @@
 BINDIR     := $(CURDIR)/bin
 DIST_DIRS  := find * -type d -exec
-TARGETS    := darwin/amd64 linux/amd64 linux/386 linux/arm linux/arm64 linux/ppc64le windows/amd64
+#TARGETS    := darwin/amd64 linux/amd64 linux/386 linux/arm linux/arm64 linux/ppc64le windows/amd64
+TARGETS    := darwin/amd64 linux/amd64 windows/amd64
 
 # go option
 GO         ?= go
@@ -10,6 +11,8 @@ TESTS      := .
 TESTFLAGS  :=
 LDFLAGS    := -w -s
 GOFLAGS    :=
+
+VERSION    := 3.alpha-js-1
 
 # Required for globs to work correctly
 SHELL      = /bin/bash
@@ -113,6 +116,26 @@ ifndef HAS_GOX
 	go get -u github.com/mitchellh/gox
 endif
 	dep ensure -vendor-only
+
+fmt:
+	@FORMATTED=`$(GO) fmt $(PKG)`
+	@([[ ! -z "$(FORMATTED)" ]] && printf "Fixed unformatted files:\n$(FORMATTED)") || true
+
+clean-release:
+	rm -rf _dist release && mkdir release
+
+gh-release: clean-release build-cross
+	chmod +x _dist/darwin-amd64/helm
+	chmod +x _dist/linux-amd64/helm
+	chmod +x _dist/windows-amd64/helm.exe
+
+	cd ./_dist/darwin-amd64; tar -zcvf ../../release/helm-darwin-amd64.tar.gz helm
+	cd ./_dist/linux-amd64; tar -zcvf ../../release/helm-linux-amd64.tar.gz helm
+	cd ./_dist/windows-amd64; tar -zcvf ../../release/helm-windows-amd64.tar.gz helm.exe
+
+	go get -u github.com/progrium/gh-release
+	#gh-release checksums sha256
+	gh-release create jstrachan/helm $(VERSION) 4255 $(VERSION)
 
 .PHONY: info
 info:
